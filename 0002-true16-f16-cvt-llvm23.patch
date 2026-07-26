@@ -1,0 +1,75 @@
+diff -Naur a/Tensile/Common.py b/Tensile/Common.py
+--- a/Tensile/Common.py	2026-07-15 16:25:33.187929600 +0200
++++ b/Tensile/Common.py	2026-07-25 00:35:21.646908206 +0200
+@@ -49,6 +49,10 @@
+ def isGfx12(isaVersion: IsaVersion) -> bool:
+   return isaVersion[0] == 12
+ 
++def isTrue16Isa(isaVersion: IsaVersion) -> bool:
++  """GFX11+ requires true16 VGPR half selectors (.l/.h) for f16 cvt in LLVM 16+."""
++  return isaVersion[0] >= 11
++
+ class SemanticVersion(NamedTuple):
+     major: int
+     minor: int
+diff -Naur a/Tensile/KernelWriterAssembly.py b/Tensile/KernelWriterAssembly.py
+--- a/Tensile/KernelWriterAssembly.py	2026-07-15 16:25:34.795966100 +0200
++++ b/Tensile/KernelWriterAssembly.py	2026-07-25 00:35:21.648298813 +0200
+@@ -23,7 +23,7 @@
+ ################################################################################
+ 
+ from . import Code
+-from .Common import gfxName, globalParameters, getCOVFromParam, isGfx12, tPrint, printExit, printWarning, roundUp
++from .Common import gfxName, globalParameters, getCOVFromParam, isGfx12, isTrue16Isa, tPrint, printExit, printWarning, roundUp
+ from .Component import Component
+ from .KernelWriter import KernelWriter
+ from .SolutionStructs import isPackedIndex
+@@ -237,6 +237,16 @@
+   def isGfx12(self):
+     return isGfx12(self.version)
+ 
++  def isTrue16Isa(self):
++    return isTrue16Isa(self.version)
++
++  def true16Vgpr(self, reg, hi=False):
++    """Append .l/.h true16 selector for GFX11+ f16 convert instructions."""
++    if not self.isTrue16Isa():
++      return reg
++    sel = '.h' if hi else '.l'
++    return reg + sel
++
+   @property
+   def syncStr(self):
+     return "_s_barrier" if hasattr(self, "version") and self.isGfx12() else "s_barrier"
+@@ -9808,13 +9818,19 @@
+                 for iter in range(0, numIters):
+                   vgprsrc = vgpr("G2L%s+%u"%(tc, g2lIdx+iter))
+ 
+-                  localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe0"), vgprsrc,"")
++                  if self.isTrue16Isa():
++                    localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe0"), self.true16Vgpr(vgprsrc, hi=False),"")
++                  else:
++                    localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe0"), vgprsrc,"")
+                   if kernel["ProblemType"]["Fp16AltImplRound"]:
+                     localWriteCode.addInst("v_cmp_u_f32", sgpr("Fp16AltNanCheck", self.laneSGPRCount), vgpr("G2Lpipe0"), vgpr("G2Lpipe0"), "check NaN" )
+                     localWriteCode.addInst("v_add_u32", vgpr("Fp16AltTmp"), sgpr("Fp16AltOffset"), vgpr("G2Lpipe0"), "")
+                     localWriteCode.addInst("v_cndmask_b32", vgpr("G2Lpipe0"), vgpr("Fp16AltTmp"), vgpr("G2Lpipe0"), sgpr("Fp16AltNanCheck",self.laneSGPRCount), "" )
+ 
+-                  localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe1"), vgprsrc, "src0_sel:WORD_1", "")
++                  if self.isTrue16Isa():
++                    localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe1"), self.true16Vgpr(vgprsrc, hi=True), "")
++                  else:
++                    localWriteCode.addInst("v_cvt_f32_f16", vgpr("G2Lpipe1"), vgprsrc, "src0_sel:WORD_1", "")
+                   if kernel["ProblemType"]["Fp16AltImplRound"]:
+                     localWriteCode.addInst("v_cmp_u_f32", sgpr("Fp16AltNanCheck",self.laneSGPRCount), vgpr("G2Lpipe1"), vgpr("G2Lpipe1"), "check NaN" )
+                     localWriteCode.addInst("v_add_u32", vgpr("Fp16AltTmp"), sgpr("Fp16AltOffset"), vgpr("G2Lpipe1"), "")
+@@ -15088,7 +15104,8 @@
+           for vi in range(0, gwvw):
+             sumIdxV = ss.elementSumIdx[elementIdx] + vi
+             if kernel["ProblemType"]["DestDataType"].isHalf():
+-              kStr += inst("v_cvt_f16_f32", vgpr("ValuC+%u"%sumIdxV), vgpr("ValuC+%u"%sumIdxV), "convert C to fp16" )
++              # LLVM 16+/23 true16: GFX11+ needs v_cvt_f16_f32 vN.l, vM (not plain vN)
++              kStr += inst("v_cvt_f16_f32", self.true16Vgpr(vgpr("ValuC+%u"%sumIdxV)), vgpr("ValuC+%u"%sumIdxV), "convert C to fp16" )
+               if vi%2 == 1:
+                 assert (gwvw % 2 == 0)
+                 d = ss.elementSumIdx[elementIdx] + vi//2
