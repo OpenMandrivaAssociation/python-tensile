@@ -1,6 +1,6 @@
-diff -Naur a/Tensile/Common.py b/Tensile/Common.py
---- a/Tensile/Common.py	2026-07-15 16:25:33.187929600 +0200
-+++ b/Tensile/Common.py	2026-07-25 00:35:21.646908206 +0200
+diff -Naur tensile.orig/Tensile/Common.py tensile/Tensile/Common.py
+--- tensile.orig/Tensile/Common.py	2026-08-26 11:36:47.785112400 +0200
++++ tensile/Tensile/Common.py	2026-09-02 16:01:56.491402931 +0200
 @@ -49,6 +49,10 @@
  def isGfx12(isaVersion: IsaVersion) -> bool:
    return isaVersion[0] == 12
@@ -12,9 +12,9 @@ diff -Naur a/Tensile/Common.py b/Tensile/Common.py
  class SemanticVersion(NamedTuple):
      major: int
      minor: int
-diff -Naur a/Tensile/KernelWriterAssembly.py b/Tensile/KernelWriterAssembly.py
---- a/Tensile/KernelWriterAssembly.py	2026-07-15 16:25:34.795966100 +0200
-+++ b/Tensile/KernelWriterAssembly.py	2026-07-25 00:35:21.648298813 +0200
+diff -Naur tensile.orig/Tensile/KernelWriterAssembly.py tensile/Tensile/KernelWriterAssembly.py
+--- tensile.orig/Tensile/KernelWriterAssembly.py	2026-08-26 11:36:50.070112500 +0200
++++ tensile/Tensile/KernelWriterAssembly.py	2026-09-02 16:01:56.519954212 +0200
 @@ -23,7 +23,7 @@
  ################################################################################
  
@@ -38,10 +38,10 @@ diff -Naur a/Tensile/KernelWriterAssembly.py b/Tensile/KernelWriterAssembly.py
 +    sel = '.h' if hi else '.l'
 +    return reg + sel
 +
-   @property
-   def syncStr(self):
-     return "_s_barrier" if hasattr(self, "version") and self.isGfx12() else "s_barrier"
-@@ -9808,13 +9818,19 @@
+   def isOcpFloat8(self):
+     # gfx950 and gfx12xx use OCP f8 (E4M3 max 448); gfx942 uses FNUZ (max 240).
+     return self.version == (9,5,0) or isGfx12(self.version)
+@@ -9812,13 +9822,19 @@
                  for iter in range(0, numIters):
                    vgprsrc = vgpr("G2L%s+%u"%(tc, g2lIdx+iter))
  
@@ -63,7 +63,7 @@ diff -Naur a/Tensile/KernelWriterAssembly.py b/Tensile/KernelWriterAssembly.py
                    if kernel["ProblemType"]["Fp16AltImplRound"]:
                      localWriteCode.addInst("v_cmp_u_f32", sgpr("Fp16AltNanCheck",self.laneSGPRCount), vgpr("G2Lpipe1"), vgpr("G2Lpipe1"), "check NaN" )
                      localWriteCode.addInst("v_add_u32", vgpr("Fp16AltTmp"), sgpr("Fp16AltOffset"), vgpr("G2Lpipe1"), "")
-@@ -15088,7 +15104,8 @@
+@@ -15101,7 +15117,8 @@
            for vi in range(0, gwvw):
              sumIdxV = ss.elementSumIdx[elementIdx] + vi
              if kernel["ProblemType"]["DestDataType"].isHalf():
