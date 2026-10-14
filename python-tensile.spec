@@ -3,7 +3,7 @@
 
 Name:		python-tensile
 Version:	10.0.0
-Release:	1
+Release:	2
 Summary:	ROCm Tensile GEMM kernel generator
 License:	MIT
 Group:		Development/Python
@@ -17,7 +17,7 @@ Patch1:		0002-true16-f16-cvt-llvm23.patch
 BuildArch:	noarch
 BuildRequires:	python%{pyver}dist(setuptools)
 BuildRequires:	python%{pyver}dist(pip)
-BuildRequires:	python3-devel
+BuildRequires:	pkgconfig(python3)
 Requires:	python%{pyver}dist(pyyaml)
 Requires:	python%{pyver}dist(msgpack)
 Requires:	python%{pyver}dist(joblib)
