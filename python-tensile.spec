@@ -1,14 +1,14 @@
-# Tensile GEMM auto-tuner generator (TheRock 10.0)
+# Tensile GEMM auto-tuner generator (TheRock 10.1)
 # Pure Python + C++ sources used at consumer build time (rocBLAS). No prebuilt kernels.
 
 Name:		python-tensile
-Version:	10.0.0
-Release:	2
+Version:	10.1.0
+Release:	1
 Summary:	ROCm Tensile GEMM kernel generator
 License:	MIT
 Group:		Development/Python
 URL:		https://github.com/ROCm/Tensile
-Source0:	https://github.com/ROCm/rocm-libraries/releases/download/therock-10.0/tensile.tar.gz#/tensile-%{version}.tar.gz
+Source0:	https://github.com/ROCm/rocm-libraries/releases/download/therock-10.1/tensile.tar.gz#/tensile-%{version}.tar.gz
 # Make find_package(Tensile) work with system PATH layout
 Patch0:		0001-tensile-config-system-paths.patch
 # LLVM 23 true16: GFX11+ f16 cvt needs .l/.h selectors
