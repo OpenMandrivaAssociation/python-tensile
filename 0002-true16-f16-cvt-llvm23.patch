@@ -1,7 +1,10 @@
-diff -Naur tensile.orig/Tensile/Common.py tensile/Tensile/Common.py
---- tensile.orig/Tensile/Common.py	2026-08-26 11:36:47.785112400 +0200
-+++ tensile/Tensile/Common.py	2026-09-02 16:01:56.491402931 +0200
-@@ -49,6 +49,10 @@
+LLVM 16+ true16: GFX11+ f16 converts need a .l/.h VGPR selector.
+rocBLAS Tensile still emits the bare form. hipBLASLt's codegen already
+does this upstream.
+
+--- a/Tensile/Common.py
++++ b/Tensile/Common.py
+@@ -48,6 +48,10 @@
  def isGfx12(isaVersion: IsaVersion) -> bool:
    return isaVersion[0] == 12
  
@@ -9,12 +12,11 @@ diff -Naur tensile.orig/Tensile/Common.py tensile/Tensile/Common.py
 +  """GFX11+ requires true16 VGPR half selectors (.l/.h) for f16 cvt in LLVM 16+."""
 +  return isaVersion[0] >= 11
 +
- class SemanticVersion(NamedTuple):
-     major: int
-     minor: int
-diff -Naur tensile.orig/Tensile/KernelWriterAssembly.py tensile/Tensile/KernelWriterAssembly.py
---- tensile.orig/Tensile/KernelWriterAssembly.py	2026-08-26 11:36:50.070112500 +0200
-+++ tensile/Tensile/KernelWriterAssembly.py	2026-09-02 16:01:56.519954212 +0200
+ def isGfx117(isaVersion: IsaVersion) -> bool:
+   return isaVersion[:2] == (11, 7)
+ 
+--- a/Tensile/KernelWriterAssembly.py
++++ b/Tensile/KernelWriterAssembly.py
 @@ -23,7 +23,7 @@
  ################################################################################
  
